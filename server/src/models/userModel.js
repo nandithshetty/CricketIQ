@@ -17,3 +17,18 @@ export async function findUserById(id) {
   const users = await query(`SELECT id, email, role, created_at FROM users WHERE id = ?`, [id]);
   return users.length > 0 ? users[0] : null;
 }
+
+export async function ensureAdminUserExists() {
+  try {
+    const bcrypt = (await import('bcryptjs')).default;
+    const adminEmail = 'admin@cricketiq.com';
+    const existing = await findUserByEmail(adminEmail);
+    if (!existing) {
+      const hash = await bcrypt.hash('admin123', 10);
+      await createUser(adminEmail, hash, 'admin');
+      console.log(`👑 Default Admin Account Initialized: ${adminEmail} (password: admin123)`);
+    }
+  } catch (err) {
+    console.error('Failed to initialize admin account:', err.message);
+  }
+}

@@ -17,12 +17,13 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
     setLoading(true);
 
     try {
+      let res;
       if (isLogin) {
-        await loginUser({ email, password });
+        res = await loginUser({ email, password });
       } else {
-        await registerUser({ email, password });
+        res = await registerUser({ email, password });
       }
-      if (onSuccess) onSuccess();
+      if (onSuccess) onSuccess(res.user);
       onClose();
     } catch (err) {
       setError(err.response?.data?.error || 'Authentication failed. Please check credentials.');
@@ -41,16 +42,18 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
           <X className="w-5 h-5" />
         </button>
 
-        <div className="text-center mb-6">
+        <div className="text-center mb-5">
           <h2 className="text-xl font-bold text-white">
             {isLogin ? 'Welcome Back to CricketIQ' : 'Create CricketIQ Account'}
           </h2>
           <p className="text-xs text-slate-400 mt-1">
             {isLogin
-              ? 'Sign in to access watchlists & custom comparisons'
+              ? 'Sign in to access watchlists & admin features'
               : 'Register to unlock personalized features'}
           </p>
         </div>
+
+
 
         {error && (
           <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">

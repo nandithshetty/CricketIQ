@@ -16,6 +16,8 @@ export default function PlayerCompare() {
   const [selectedDropdownId, setSelectedDropdownId] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [initialLoaded, setInitialLoaded] = useState(false);
+
   useEffect(() => {
     async function initAllPlayers() {
       try {
@@ -30,16 +32,20 @@ export default function PlayerCompare() {
   }, []);
 
   useEffect(() => {
-    const idsParam = searchParams.get('ids') || searchParams.get('players');
-    if (idsParam) {
-      const idsArr = idsParam.split(',').filter(Boolean);
+    if (initialLoaded) return;
+    const hasParam = searchParams.has('ids') || searchParams.has('players');
+    if (hasParam) {
+      const idsParam = searchParams.get('ids') || searchParams.get('players');
+      const idsArr = (idsParam || '').split(',').filter(Boolean);
       setSelectedIds(idsArr);
+      setInitialLoaded(true);
     } else if (allPlayersList.length >= 2) {
       const defaultIds = [String(allPlayersList[0].id), String(allPlayersList[1].id)];
       setSelectedIds(defaultIds);
       setSearchParams({ ids: defaultIds.join(',') });
+      setInitialLoaded(true);
     }
-  }, [searchParams, allPlayersList]);
+  }, [searchParams, allPlayersList, initialLoaded]);
 
   useEffect(() => {
     if (selectedIds.length === 0) {
@@ -80,6 +86,11 @@ export default function PlayerCompare() {
     const newIds = selectedIds.filter((id) => String(id) !== String(idToRemove));
     setSelectedIds(newIds);
     setSearchParams({ ids: newIds.join(',') });
+  };
+
+  const handleClearAll = () => {
+    setSelectedIds([]);
+    setSearchParams({ ids: '' });
   };
 
   const handleSearchChange = async (query) => {
@@ -134,7 +145,7 @@ export default function PlayerCompare() {
 
         <div className="mt-6 pt-6 border-t border-slate-800 space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs font-semibold text-slate-400 uppercase mr-1">Comparing ({comparedPlayers.length}/3):</span>
+            <span className="text-xs font-semibold text-slate-400 uppercase mr-1">Comparing ({selectedIds.length}/3):</span>
             {comparedPlayers.map((p) => (
               <div
                 key={p.id}
@@ -142,13 +153,19 @@ export default function PlayerCompare() {
               >
                 <PlayerAvatar name={p.name} country={p.country} size="xs" />
                 <span>{p.name} ({p.country})</span>
-                {selectedIds.length > 1 && (
-                  <button onClick={() => handleRemovePlayer(p.id)} className="text-slate-400 hover:text-rose-400 ml-1">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                <button onClick={() => handleRemovePlayer(p.id)} title="Remove player" className="text-slate-400 hover:text-rose-400 ml-1 transition-colors">
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
             ))}
+            {selectedIds.length > 0 && (
+              <button
+                onClick={handleClearAll}
+                className="text-[11px] font-semibold text-rose-400 hover:text-rose-300 hover:underline ml-2 transition-colors"
+              >
+                Clear All
+              </button>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-3 pt-2">

@@ -5,22 +5,12 @@ import PlayerAvatar from './PlayerAvatar';
 import { searchPlayers } from '../api';
 
 // Navbar component with real-time search & autocomplete
-export default function Navbar({ onOpenAuth }) {
+export default function Navbar({ user, onLogout, onOpenAuth }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [user, setUser] = useState(null);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const stored = localStorage.getItem('cricketiq_user');
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch (e) {}
-    }
-  }, []);
 
   useEffect(() => {
     if (!searchTerm.trim()) {
@@ -60,10 +50,13 @@ export default function Navbar({ onOpenAuth }) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('cricketiq_token');
-    localStorage.removeItem('cricketiq_user');
-    setUser(null);
-    window.location.reload();
+    if (onLogout) {
+      onLogout();
+    } else {
+      localStorage.removeItem('cricketiq_token');
+      localStorage.removeItem('cricketiq_user');
+      window.location.reload();
+    }
   };
 
   return (
@@ -149,20 +142,41 @@ export default function Navbar({ onOpenAuth }) {
             <span className="hidden md:inline">Compare</span>
           </Link>
 
-          <Link
-            to="/admin"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-cyan-400 hover:bg-slate-800/60 transition-colors"
-          >
-            <Cpu className="w-4 h-4 text-emerald-400" />
-            <span className="hidden md:inline">Jobs & Queue</span>
-          </Link>
+          {/* Jobs & Queue Link (Admin Only) */}
+          {user?.role === 'admin' ? (
+            <Link
+              to="/admin"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition-colors shadow-sm"
+            >
+              <Cpu className="w-4 h-4 text-emerald-400" />
+              <span>Jobs & Queue</span>
+            </Link>
+          ) : (
+            <Link
+              to="/admin"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-cyan-400 hover:bg-slate-800/60 transition-colors"
+              title="Admin Authentication Required"
+            >
+              <Cpu className="w-4 h-4 text-slate-500" />
+              <span className="hidden md:inline">Jobs Queue</span>
+            </Link>
+          )}
 
-          {/* User Auth */}
+          {/* User Auth Info */}
           {user ? (
             <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
-              <span className="text-xs text-slate-300 font-semibold hidden sm:inline px-2 py-1 bg-slate-800/80 rounded-md border border-slate-700">
-                {user.email.split('@')[0]}
-              </span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 rounded-xl border border-slate-800 text-xs">
+                <span className="text-slate-200 font-semibold hidden sm:inline">{user.email.split('@')[0]}</span>
+                <span
+                  className={`px-1.5 py-0.5 text-[10px] font-extrabold rounded uppercase tracking-wider ${
+                    user.role === 'admin'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                      : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                  }`}
+                >
+                  {user.role}
+                </span>
+              </div>
               <button
                 onClick={handleLogout}
                 title="Logout"

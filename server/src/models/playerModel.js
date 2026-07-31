@@ -81,7 +81,44 @@ export async function getPlayerOppositionStats(playerId, teamId = null) {
     params.push(teamId);
   }
   sql += ` ORDER BY total_runs DESC`;
-  return query(sql, params);
+
+  const results = await query(sql, params);
+  if (results && results.length > 0) {
+    return results;
+  }
+
+  // Fallback: Aggregate opposition stats directly from player_match_stats & matches
+  let fallbackSql = `
+    SELECT 
+      opp.country as team_name,
+      opp.country as team_country,
+      m.format,
+      COUNT(DISTINCT pms.match_id) as matches,
+      COUNT(pms.id) as innings,
+      SUM(pms.runs) as total_runs,
+      MAX(pms.runs) as highest_score,
+      ROUND(CAST(SUM(pms.runs) AS REAL) / NULLIF(COUNT(DISTINCT pms.match_id), 0), 2) as average,
+      SUM(CASE WHEN pms.runs >= 100 THEN 1 ELSE 0 END) as hundreds,
+      SUM(CASE WHEN pms.runs >= 50 AND pms.runs < 100 THEN 1 ELSE 0 END) as fifties,
+      SUM(pms.wickets) as total_wickets,
+      ROUND(CAST(SUM(pms.runs_conceded) AS REAL) / NULLIF(SUM(pms.wickets), 0), 2) as bowling_avg,
+      ROUND(CAST(SUM(pms.runs_conceded) AS REAL) / NULLIF(SUM(pms.overs_bowled), 0), 2) as economy
+    FROM player_match_stats pms
+    JOIN matches m ON pms.match_id = m.id
+    JOIN players p ON pms.player_id = p.id
+    JOIN teams home_team ON m.team_home_id = home_team.id
+    JOIN teams away_team ON m.team_away_id = away_team.id
+    JOIN teams opp ON (CASE WHEN home_team.country = p.country THEN away_team.id ELSE home_team.id END) = opp.id
+    WHERE pms.player_id = ?
+  `;
+  const fallbackParams = [playerId];
+  if (teamId) {
+    fallbackSql += ` AND opp.id = ?`;
+    fallbackParams.push(teamId);
+  }
+  fallbackSql += ` GROUP BY opp.country, m.format HAVING (total_runs > 0 OR total_wickets > 0) ORDER BY total_runs DESC`;
+
+  return query(fallbackSql, fallbackParams);
 }
 
 export async function getPlayerVenueStats(playerId) {

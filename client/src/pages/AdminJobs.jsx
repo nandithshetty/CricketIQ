@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Cpu, RefreshCw, Play, CheckCircle2, Clock, AlertTriangle, Database, Zap } from 'lucide-react';
+import { Cpu, RefreshCw, Play, CheckCircle2, Clock, AlertTriangle, Database, Zap, ShieldAlert, Lock, UserCheck } from 'lucide-react';
 import { triggerAdminImport, getAdminJobs, getCacheStats } from '../api';
 
-export default function AdminJobs() {
+export default function AdminJobs({ user, onOpenAuth }) {
   const [jobs, setJobs] = useState([]);
   const [cacheStats, setCacheStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [triggering, setTriggering] = useState(false);
   const [message, setMessage] = useState('');
 
+  const isAdmin = user && user.role === 'admin';
+
   const loadJobsData = async () => {
+    if (!isAdmin) return;
     setLoading(true);
     try {
       const [jobsData, cacheData] = await Promise.all([getAdminJobs(), getCacheStats()]);
@@ -23,10 +26,12 @@ export default function AdminJobs() {
   };
 
   useEffect(() => {
-    loadJobsData();
-    const interval = setInterval(loadJobsData, 4000);
-    return () => clearInterval(interval);
-  }, []);
+    if (isAdmin) {
+      loadJobsData();
+      const interval = setInterval(loadJobsData, 4000);
+      return () => clearInterval(interval);
+    }
+  }, [isAdmin]);
 
   const handleTriggerJob = async (type) => {
     setTriggering(true);
@@ -36,11 +41,48 @@ export default function AdminJobs() {
       setMessage(`Job #${res.jobId} [${type}] queued successfully.`);
       await loadJobsData();
     } catch (err) {
-      setMessage('Failed to queue background job.');
+      setMessage('Failed to queue background job (Admin privileges required).');
     } finally {
       setTriggering(false);
     }
   };
+
+  if (!isAdmin) {
+    return (
+      <div className="max-w-2xl mx-auto py-12">
+        <div className="glass-panel rounded-3xl p-8 sm:p-12 border border-slate-800 text-center space-y-6 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 shadow-2xl relative overflow-hidden">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto shadow-lg shadow-amber-500/10">
+            <Lock className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-2xl font-extrabold text-white">Admin Privileges Required</h2>
+            <p className="text-sm text-slate-400 leading-relaxed max-w-md mx-auto">
+              The <strong className="text-slate-200">Background Processing & Jobs Queue</strong> is restricted to system administrators. Log in with an admin account to manage background workers and monitor in-memory cache health.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-1 text-xs">
+            <div className="font-semibold text-slate-300 flex items-center justify-center gap-1.5">
+              <UserCheck className="w-4 h-4 text-cyan-400" /> Authorized Access Only
+            </div>
+            <p className="text-slate-400 text-[11px]">
+              Please sign in with an authenticated administrator account to manage queue workers and cache stats.
+            </p>
+          </div>
+
+          <div className="pt-2">
+            <button
+              onClick={onOpenAuth}
+              className="py-3 px-8 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-950 font-bold text-sm shadow-lg shadow-cyan-500/20 hover:opacity-90 transition-opacity"
+            >
+              Sign In as Admin
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-12">

@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { initDb } from './config/db.js';
+import { ensureAdminUserExists } from './models/userModel.js';
 import { startJobWorker } from './workers/jobWorker.js';
 
 import playerRoutes from './routes/playerRoutes.js';
@@ -32,6 +33,7 @@ async function startServer() {
   try {
     const dbMode = await initDb();
     console.log(`🚀 Database layer active in [${dbMode.toUpperCase()}] mode.`);
+    await ensureAdminUserExists();
 
     // Start background job polling worker
     startJobWorker();

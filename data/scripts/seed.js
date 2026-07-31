@@ -85,6 +85,55 @@ async function seed() {
     insertedPlayerIds.push(playerId);
     playerCount++;
 
+    // Historical active playing eras (debut - retirement) for all 41 legends
+    const LEGEND_ERAS = {
+      "Garfield Sobers": [1954, 1974],
+      "Sunil Gavaskar": [1971, 1987],
+      "Richard Hadlee": [1973, 1990],
+      "Vivian Richards": [1974, 1991],
+      "Kapil Dev": [1978, 1994],
+      "Wasim Akram": [1984, 2003],
+      "Sachin Tendulkar": [1989, 2013],
+      "Sanath Jayasuriya": [1989, 2011],
+      "Anil Kumble": [1990, 2008],
+      "Brian Lara": [1990, 2007],
+      "Inzamam-ul-Haq": [1991, 2007],
+      "Sourav Ganguly": [1992, 2008],
+      "Shane Warne": [1992, 2007],
+      "Muttiah Muralitharan": [1992, 2011],
+      "Andy Flower": [1992, 2003],
+      "Heath Streak": [1993, 2005],
+      "Glenn McGrath": [1993, 2007],
+      "Matthew Hayden": [1993, 2009],
+      "Shivnarine Chanderpaul": [1994, 2015],
+      "Ricky Ponting": [1995, 2012],
+      "Jacques Kallis": [1995, 2014],
+      "Rahul Dravid": [1996, 2012],
+      "VVS Laxman": [1996, 2012],
+      "Adam Gilchrist": [1996, 2008],
+      "Shoaib Akhtar": [1997, 2011],
+      "Mahela Jayawardene": [1997, 2015],
+      "Harbhajan Singh": [1998, 2016],
+      "Virender Sehwag": [1999, 2013],
+      "Brett Lee": [1999, 2012],
+      "Chris Gayle": [1999, 2021],
+      "Yuvraj Singh": [2000, 2017],
+      "Zaheer Khan": [2000, 2014],
+      "Kumar Sangakkara": [2000, 2015],
+      "Graeme Smith": [2002, 2014],
+      "Brendon McCullum": [2002, 2016],
+      "Gautam Gambhir": [2003, 2016],
+      "MS Dhoni": [2004, 2019],
+      "AB de Villiers": [2004, 2018],
+      "Dale Steyn": [2004, 2021],
+      "Hashim Amla": [2004, 2019],
+      "Ross Taylor": [2006, 2022]
+    };
+
+    const dobYear = p.date_of_birth ? parseInt(p.date_of_birth.split('-')[0]) : 1975;
+    const [debutYear, retirementYear] = LEGEND_ERAS[p.name] || [dobYear + 18, Math.min(2023, dobYear + 36)];
+    const eraSpan = Math.max(1, retirementYear - debutYear);
+
     // Insert Real Overall Career Stats (season IS NULL)
     for (const c of p.career) {
       await query(
@@ -99,8 +148,8 @@ async function seed() {
       );
       careerCount++;
 
-      // Generate Season Breakdowns (2020-2026) proportional to real stats
-      const seasons = [2021, 2022, 2023, 2024, 2025, 2026];
+      // Generate Season Breakdowns within authentic career era
+      const seasons = Array.from({ length: 5 }, (_, i) => Math.floor(debutYear + (i * eraSpan / 4)));
       for (const yr of seasons) {
         const factor = (1 / seasons.length) * (0.6 + Math.random() * 0.8);
         const yrMatches = Math.max(1, Math.round(c.matches * factor * 0.15));
@@ -153,10 +202,9 @@ async function seed() {
         const homeTeamId = teamIdMap[p.country] || 1;
         const awayTeamId = teamIdMap[oppTeam.country] || 2;
 
-        // Generate individual match records for this opposition
+        // Generate individual match records for this opposition within player's active career era
         for (let mi = 0; mi < oppMatches; mi++) {
-          // Spread matches across years
-          const year = 2015 + (mi % 11);
+          const year = debutYear + (mi % (eraSpan + 1));
           const month = ((ti * 3 + mi) % 12) + 1;
           const day = ((mi * 7 + ti * 3) % 28) + 1;
           const venue = VENUES[(ti * 5 + mi + playerId) % VENUES.length];

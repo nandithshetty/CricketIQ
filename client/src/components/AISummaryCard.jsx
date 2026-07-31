@@ -8,13 +8,18 @@ export default function AISummaryCard({ playerId, initialSummary, generatedAt })
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const [refreshed, setRefreshed] = useState(false);
+
   const handleRefresh = async () => {
     if (loading) return;
     setLoading(true);
+    setRefreshed(false);
     try {
       const data = await getAISummary(playerId, true);
       setSummary(data.summary);
       setDate(data.generatedAt);
+      setRefreshed(true);
+      setTimeout(() => setRefreshed(false), 3000);
     } catch (err) {
       console.error('Failed to refresh AI summary:', err);
     } finally {
@@ -45,14 +50,21 @@ export default function AISummaryCard({ playerId, initialSummary, generatedAt })
           </div>
         </div>
 
-        <button
-          onClick={handleRefresh}
-          disabled={loading}
-          className="self-start sm:self-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-xs font-semibold text-cyan-300 border border-slate-700 transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          {loading ? 'Re-analyzing...' : 'Refresh Summary'}
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {refreshed && (
+            <span className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-lg animate-fade-in font-medium">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Refreshed!
+            </span>
+          )}
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-xs font-semibold text-cyan-300 border border-slate-700 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Re-analyzing...' : 'Refresh Summary'}
+          </button>
+        </div>
       </div>
 
       <div className="text-sm text-slate-200 leading-relaxed font-normal bg-slate-950/40 p-4 rounded-xl border border-slate-800/60">
