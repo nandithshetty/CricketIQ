@@ -11,6 +11,12 @@ import leaderboardRoutes from './routes/leaderboardRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 dotenv.config();
 
 const app = express();
@@ -18,6 +24,9 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+
+// Serve player portrait photos statically
+app.use('/photos', express.static(path.resolve(__dirname, '../../client/public/photos')));
 
 // API Routes
 app.use('/api/players', playerRoutes);
@@ -38,8 +47,8 @@ async function startServer() {
     // Start background job polling worker
     startJobWorker();
 
-    app.listen(PORT, () => {
-      console.log(`⚡ CricketIQ Backend API running on http://localhost:${PORT}`);
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`⚡ CricketIQ Backend API running on http://0.0.0.0:${PORT} (LAN: http://172.20.10.3:${PORT})`);
     });
   } catch (err) {
     console.error('💥 Failed to start server:', err);

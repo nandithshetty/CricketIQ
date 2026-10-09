@@ -1,6 +1,22 @@
 node_modules
 dist
+build
+coverage
+
+# Environment & Secrets
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Databases & Logs
 *.db
+*.sqlite
 *.log
+
+# System & IDE
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/

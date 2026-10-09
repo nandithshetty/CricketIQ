@@ -38,7 +38,7 @@ export async function generatePlayerAISummary(playerId) {
 
   if (genAI) {
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
       const prompt = `You are a professional cricket analytics assistant. 
 Given these verified statistics for ${player.name} (${player.country}, ${player.role}):
 ${statsJson}

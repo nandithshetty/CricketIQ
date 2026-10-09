@@ -171,82 +171,83 @@ async function seed() {
       }
     }
 
-    // Generate realistic opposition & match breakdowns by distributing real career totals across teams
-    for (const c of p.career) {
-      const oppositionTeams = TEAMS.filter((t) => t.country !== p.country);
-      const numOpp = oppositionTeams.length;
+    // Generate detailed match breakdowns for top featured players
+    if (playerCount <= 45) {
+      for (const c of p.career) {
+        const oppositionTeams = TEAMS.filter((t) => t.country !== p.country);
+        const numOpp = oppositionTeams.length;
 
-      // Generate weighted random shares for distributing matches across opposition teams
-      const rawWeights = oppositionTeams.map(() => 0.3 + Math.random() * 0.7);
-      const weightSum = rawWeights.reduce((a, b) => a + b, 0);
-      const shares = rawWeights.map((w) => w / weightSum);
+        // Generate weighted random shares for distributing matches across opposition teams
+        const rawWeights = oppositionTeams.map(() => 0.3 + Math.random() * 0.7);
+        const weightSum = rawWeights.reduce((a, b) => a + b, 0);
+        const shares = rawWeights.map((w) => w / weightSum);
 
-      // Distribute career matches across teams (min 1 per team if enough matches)
-      let matchAlloc = shares.map((s) => Math.max(1, Math.round(c.matches * s)));
-      // Adjust to not exceed total matches
-      const allocTotal = matchAlloc.reduce((a, b) => a + b, 0);
-      if (allocTotal > c.matches) {
-        const scale = c.matches / allocTotal;
-        matchAlloc = matchAlloc.map((m) => Math.max(1, Math.round(m * scale)));
-      }
+        // Distribute career matches across teams (min 1 per team if enough matches)
+        let matchAlloc = shares.map((s) => Math.max(1, Math.round(c.matches * s)));
+        // Adjust to not exceed total matches
+        const allocTotal = matchAlloc.reduce((a, b) => a + b, 0);
+        if (allocTotal > c.matches) {
+          const scale = c.matches / allocTotal;
+          matchAlloc = matchAlloc.map((m) => Math.max(1, Math.round(m * scale)));
+        }
 
-      const isBatter = c.runs > 500;
-      const isBowler = c.wickets > 20;
-      const avgRunsPerMatch = c.matches > 0 ? c.runs / c.matches : 0;
-      const avgWicketsPerMatch = c.matches > 0 ? c.wickets / c.matches : 0;
-      const avgCatchesPerMatch = c.matches > 0 ? c.catches / c.matches : 0;
+        const isBatter = c.runs > 500;
+        const isBowler = c.wickets > 20;
+        const avgRunsPerMatch = c.matches > 0 ? c.runs / c.matches : 0;
+        const avgWicketsPerMatch = c.matches > 0 ? c.wickets / c.matches : 0;
+        const avgCatchesPerMatch = c.matches > 0 ? c.catches / c.matches : 0;
 
-      for (let ti = 0; ti < numOpp; ti++) {
-        const oppTeam = oppositionTeams[ti];
-        const oppMatches = matchAlloc[ti];
-        const homeTeamId = teamIdMap[p.country] || 1;
-        const awayTeamId = teamIdMap[oppTeam.country] || 2;
+        for (let ti = 0; ti < numOpp; ti++) {
+          const oppTeam = oppositionTeams[ti];
+          const oppMatches = Math.min(5, matchAlloc[ti]);
+          const homeTeamId = teamIdMap[p.country] || 1;
+          const awayTeamId = teamIdMap[oppTeam.country] || 2;
 
-        // Generate individual match records for this opposition within player's active career era
-        for (let mi = 0; mi < oppMatches; mi++) {
-          const year = debutYear + (mi % (eraSpan + 1));
-          const month = ((ti * 3 + mi) % 12) + 1;
-          const day = ((mi * 7 + ti * 3) % 28) + 1;
-          const venue = VENUES[(ti * 5 + mi + playerId) % VENUES.length];
-          const matchDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          for (let mi = 0; mi < oppMatches; mi++) {
+            const year = debutYear + (mi % (eraSpan + 1));
+            const month = ((ti * 3 + mi) % 12) + 1;
+            const day = ((mi * 7 + ti * 3) % 28) + 1;
+            const venue = VENUES[(ti * 5 + mi + playerId) % VENUES.length];
+            const matchDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-          const mRes = await query(
-            `INSERT INTO matches (format, match_date, venue, team_home_id, team_away_id)
-             VALUES (?, ?, ?, ?, ?)`,
-            [c.format, matchDate, venue, homeTeamId, awayTeamId]
-          );
-          const matchId = mRes.insertId;
+            const mRes = await query(
+              `INSERT INTO matches (format, match_date, venue, team_home_id, team_away_id)
+               VALUES (?, ?, ?, ?, ?)`,
+              [c.format, matchDate, venue, homeTeamId, awayTeamId]
+            );
+            const matchId = mRes.insertId;
 
-          let mRuns = 0, mBalls = 0, mFours = 0, mSixes = 0, dismissal = 'not out';
-          let mOvers = 0, mConceded = 0, mWickets = 0, mCatches = 0;
+            let mRuns = 0, mBalls = 0, mFours = 0, mSixes = 0, dismissal = 'not out';
+            let mOvers = 0, mConceded = 0, mWickets = 0, mCatches = 0;
 
-          if (isBatter) {
-            // Vary around the player's real average with realistic variance
-            mRuns = Math.max(0, Math.round(avgRunsPerMatch * (0.2 + Math.random() * 1.6)));
-            mBalls = Math.max(1, Math.round(mRuns / ((c.strike_rate || 50) / 100)));
-            mFours = Math.floor(mRuns / 12);
-            mSixes = Math.floor(mRuns / 35);
-            dismissal = Math.random() > 0.3 ? ['caught', 'bowled', 'lbw', 'run out', 'stumped'][Math.floor(Math.random() * 5)] : 'not out';
+            if (isBatter) {
+              mRuns = Math.max(0, Math.round(avgRunsPerMatch * (0.2 + Math.random() * 1.6)));
+              mBalls = Math.max(1, Math.round(mRuns / ((c.strike_rate || 50) / 100)));
+              mFours = Math.floor(mRuns / 12);
+              mSixes = Math.floor(mRuns / 35);
+              dismissal = Math.random() > 0.3 ? ['caught', 'bowled', 'lbw', 'run out', 'stumped'][Math.floor(Math.random() * 5)] : 'not out';
+            }
+
+            if (isBowler) {
+              mOvers = c.format === 'Test' ? (12 + Math.random() * 18) : c.format === 'ODI' ? (6 + Math.random() * 4) : (2 + Math.random() * 2);
+              mOvers = Math.round(mOvers * 10) / 10;
+              mConceded = Math.round(mOvers * (c.economy || 4) * (0.7 + Math.random() * 0.6));
+              mWickets = Math.max(0, Math.round(avgWicketsPerMatch * (0.2 + Math.random() * 1.6)));
+            }
+
+            mCatches = Math.random() > 0.65 ? Math.max(0, Math.round(avgCatchesPerMatch * (0.5 + Math.random()))) : 0;
+
+            await query(
+              `INSERT INTO player_match_stats 
+               (match_id, player_id, runs, balls_faced, fours, sixes, dismissal_type, overs_bowled, runs_conceded, wickets, catches)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [matchId, playerId, mRuns, mBalls, mFours, mSixes, dismissal, mOvers, mConceded, mWickets, mCatches]
+            );
           }
-
-          if (isBowler) {
-            mOvers = c.format === 'Test' ? (12 + Math.random() * 18) : c.format === 'ODI' ? (6 + Math.random() * 4) : (2 + Math.random() * 2);
-            mOvers = Math.round(mOvers * 10) / 10;
-            mConceded = Math.round(mOvers * (c.economy || 4) * (0.7 + Math.random() * 0.6));
-            mWickets = Math.max(0, Math.round(avgWicketsPerMatch * (0.2 + Math.random() * 1.6)));
-          }
-
-          mCatches = Math.random() > 0.65 ? Math.max(0, Math.round(avgCatchesPerMatch * (0.5 + Math.random()))) : 0;
-
-          await query(
-            `INSERT INTO player_match_stats 
-             (match_id, player_id, runs, balls_faced, fours, sixes, dismissal_type, overs_bowled, runs_conceded, wickets, catches)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [matchId, playerId, mRuns, mBalls, mFours, mSixes, dismissal, mOvers, mConceded, mWickets, mCatches]
-          );
         }
       }
     }
+
   }
 
   try {
@@ -295,8 +296,8 @@ async function seed() {
     await query(`BEGIN TRANSACTION`);
   } catch (e) {}
   
-  // Pre-generate for top 100 featured players using full generator, batch default template for others
-  const topIds = insertedPlayerIds.slice(0, 100);
+  // Pre-generate for top 20 featured players using full generator, batch default template for others
+  const topIds = insertedPlayerIds.slice(0, 20);
   for (const id of topIds) {
     try {
       await generatePlayerAISummary(id);
@@ -304,17 +305,14 @@ async function seed() {
   }
 
   // Fast insert default fallback for rest so DB queries never fail
-  const remainingIds = insertedPlayerIds.slice(100);
-  for (const id of remainingIds) {
-    const playerRow = await query(`SELECT name, country, role FROM players WHERE id = ?`, [id]);
-    if (playerRow && playerRow.length > 0) {
-      const p = playerRow[0];
-      const summaryText = `${p.name} was an international cricketer representing ${p.country} as a ${p.role}. Statistically verified career history across all international matches played.`;
-      await query(
-        `INSERT OR REPLACE INTO ai_summaries (player_id, summary_text, generated_at) VALUES (?, ?, CURRENT_TIMESTAMP)`,
-        [id, summaryText]
-      );
-    }
+  const remainingIds = insertedPlayerIds.slice(20);
+  const playerRows = await query(`SELECT id, name, country, role FROM players WHERE id > ?`, [topIds[topIds.length - 1] || 0]);
+  for (const p of playerRows) {
+    const summaryText = `${p.name} was an international cricketer representing ${p.country} as a ${p.role}. Statistically verified career history across all international matches played.`;
+    await query(
+      `INSERT OR REPLACE INTO ai_summaries (player_id, summary_text, generated_at) VALUES (?, ?, CURRENT_TIMESTAMP)`,
+      [p.id, summaryText]
+    );
   }
   
   try {
